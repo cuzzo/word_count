@@ -39,6 +39,10 @@ function get_paragraphs(str) {
   return paragraphs
 }
 
+function get_sentences(text_blob) {
+  return text_blob.split(/\.[\s\"\']/g);
+}
+
 function get_words(text_blob) {
   raw_words = text_blob.split(" ");
   var words = [];
@@ -99,13 +103,24 @@ function get_unique_words(words) {
   return dictionary;
 }
 
+function get_character_count(words) {
+  var character_count = 0;
+  words.forEach(function(word) {
+    word = clean_word(word);
+    character_count += word.length;
+  });
+  return character_count;
+}
+
 function analyze(raw_input) {
   var single_spaced_input = remove_multiple_spaces(raw_input);
   var text_blob = blob_text(raw_input);
 
   var paragraphs = get_paragraphs(single_spaced_input);
+  var sentences = get_sentences(text_blob);
   var words = get_words(text_blob);
   var unique_words = get_unique_words(words);
+  var character_count = get_character_count(words);
 
   var dialogue_bits = get_dialogue(paragraphs);
   var dialogue_words = get_words(dialogue_bits.join(" "));
@@ -125,14 +140,14 @@ function analyze(raw_input) {
   console.log("dialogue words: " + dialogue_words.length);
   console.log("dialogue unique word count: " + unique_dialogue_count);
 
+  console.log("average sentence length: " + words.length / sentences.length);
   console.log("average scene length: " + words.length / scene_count);
   console.log("average paragraph length: " + words.length / paragraphs.length);
   console.log("average dialogue length: " +
               dialogue_words.length / dialogue_bits.length);
 
   console.log("unique word ratio: " + unique_word_count / words.length);
-  //console.log(sort_dictionary(unique_words));
-  //console.log(text_blob);
+  console.log("average word length: " + character_count / words.length);
 }
 
 function main(argc, argv) {
