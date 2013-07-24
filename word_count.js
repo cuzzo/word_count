@@ -144,7 +144,8 @@ function analyze_text_blob(text_blob, items) {
     "unique_word_ratio": unique_word_count / words.length,
     "average_word_length": character_count / words.length,
     "flesch_reading_score": flesch_score,
-    "kinkaid_grade_score": kinkaid_score
+    "kinkaid_grade_score": kinkaid_score,
+    "unique_words" : sort_dictionary(unique_words)
   }
 }
 
