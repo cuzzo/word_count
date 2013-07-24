@@ -121,23 +121,13 @@ function calculate_kinkaid_grade_level(asl, asw) {
   return (0.39 * asl) + (11.8 * asw) - 15.59;
 }
 
-function analyze(raw_input) {
-  var single_spaced_input = remove_multiple_spaces(raw_input);
-  var text_blob = blob_text(raw_input);
-
-  var paragraphs = get_paragraphs(single_spaced_input);
+function analyze_text_blob(text_blob, items) {
   var sentences = get_sentences(text_blob);
   var words = get_words(text_blob);
   var unique_words = get_unique_words(words);
   var character_count = get_character_count(words);
 
-  var dialogue_bits = get_dialogue(paragraphs);
-  var dialogue_words = get_words(dialogue_bits.join(" "));
-  var dialogue_unique_words = get_unique_words(dialogue_words);
-
-  var scene_count = get_scene_count(paragraphs);
   var unique_word_count = Object.keys(unique_words).length;
-  var unique_dialogue_count = Object.keys(dialogue_unique_words).length;
 
   var average_sentence_length = words.length / sentences.length;
   var average_syllables_per_word = character_count / words.length / SYL_LEN;
@@ -146,33 +136,60 @@ function analyze(raw_input) {
   var kinkaid_score = calculate_kinkaid_grade_level(average_sentence_length,
                                             average_syllables_per_word);
 
-  console.log("paragraph count: " + paragraphs.length);
-  console.log("scene count: " + scene_count);
+  return {
+    "word_count": words.length,
+    "unique_word_count": unique_word_count,
+    "average_item_length": words.length / items,
+    "average_sentence_length": average_sentence_length,
+    "unique_word_ratio": unique_word_count / words.length,
+    "average_word_length": character_count / words.length,
+    "flesch_reading_score": flesch_score,
+    "kinkaid_grade_score": kinkaid_score
+  }
+}
 
-  console.log("word count: " + words.length);
-  console.log("unique word count: " + unique_word_count);
+function analyze_dialogue(paragraphs) {
+  var dialogue_bits = get_dialogue(paragraphs);
+  var text_blob = dialogue_bits.join(" ");
 
-  console.log("dialogue bits: " + dialogue_bits.length);
-  console.log("dialogue words: " + dialogue_words.length);
-  console.log("dialogue unique word count: " + unique_dialogue_count);
+  var result = analyze_text_blob(text_blob, dialogue_bits.length);
+  result["dialogue_bits"] = dialogue_bits.length;
+  return result;
+}
 
-  console.log("average sentence length: " + average_sentence_length);
-  console.log("average scene length: " + words.length / scene_count);
-  console.log("average paragraph length: " + words.length / paragraphs.length);
-  console.log("average dialogue length: " +
-              dialogue_words.length / dialogue_bits.length);
+function analyze_paragraphs(paragraphs) {
+  var text_blob = blob_text(paragraphs.join(" "));
+  var scene_count = get_scene_count(paragraphs);
+  var words = get_words(text_blob);
 
-  console.log("unique word ratio: " + unique_word_count / words.length);
-  console.log("average word length: " + character_count / words.length);
+  var result = analyze_text_blob(text_blob, paragraphs.length);
+  result["paragraph_count"] = paragraphs.length;
+  result["scene_count"] = scene_count;
+  result["arverage_scene_length"] = result["word_count"] / scene_count;
+  return result;
+}
 
-  console.log("flesch reading level score: " + flesch_score);
-  console.log("kinkaid grade level score: " + kinkaid_score);
+function analyze(raw_input) {
+  var single_spaced_input = remove_multiple_spaces(raw_input);
+  var paragraphs = get_paragraphs(single_spaced_input);
+  var paragraph_stats = analyze_paragraphs(paragraphs);
+  var dialogue_stats = analyze_dialogue(paragraphs);
+
+  var dialogue_percentage = dialogue_stats["word_count"] /
+                            paragraph_stats["word_count"];
+  dialogue_stats["dialogue_percentage"] = dialogue_percentage;
+
+  return {
+    "paragraph_stats": paragraph_stats,
+    "dialogue_stats": dialogue_stats
+  }
 }
 
 function main(argc, argv) {
   var input_file = argv[2];
   var raw_input = fs.readFileSync(input_file, "utf8");
-  analyze(raw_input);
+  var stats = analyze(raw_input);
+  console.log(stats);
 }
 
 main(process.argv.length, process.argv);
