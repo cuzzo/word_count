@@ -1,5 +1,6 @@
 #! /usr/bin/env node
 
+var SYL_LEN = 3; // Constant for average syllable length
 var fs = require("fs");
 
 function sort_dictionary(dict) {
@@ -112,6 +113,14 @@ function get_character_count(words) {
   return character_count;
 }
 
+function calculate_flesch_score(asl, asw) {
+  return 206.835 - (1.015 * asl) - (84 * asw);
+}
+
+function calculate_kinkaid_grade_level(asl, asw) {
+  return (0.39 * asl) + (11.8 * asw) - 15.59;
+}
+
 function analyze(raw_input) {
   var single_spaced_input = remove_multiple_spaces(raw_input);
   var text_blob = blob_text(raw_input);
@@ -130,6 +139,13 @@ function analyze(raw_input) {
   var unique_word_count = Object.keys(unique_words).length;
   var unique_dialogue_count = Object.keys(dialogue_unique_words).length;
 
+  var average_sentence_length = words.length / sentences.length;
+  var average_syllables_per_word = character_count / words.length / SYL_LEN;
+  var flesch_score = calculate_flesch_score(average_sentence_length,
+                                            average_syllables_per_word);
+  var kinkaid_score = calculate_kinkaid_grade_level(average_sentence_length,
+                                            average_syllables_per_word);
+
   console.log("paragraph count: " + paragraphs.length);
   console.log("scene count: " + scene_count);
 
@@ -140,7 +156,7 @@ function analyze(raw_input) {
   console.log("dialogue words: " + dialogue_words.length);
   console.log("dialogue unique word count: " + unique_dialogue_count);
 
-  console.log("average sentence length: " + words.length / sentences.length);
+  console.log("average sentence length: " + average_sentence_length);
   console.log("average scene length: " + words.length / scene_count);
   console.log("average paragraph length: " + words.length / paragraphs.length);
   console.log("average dialogue length: " +
@@ -148,6 +164,9 @@ function analyze(raw_input) {
 
   console.log("unique word ratio: " + unique_word_count / words.length);
   console.log("average word length: " + character_count / words.length);
+
+  console.log("flesch reading level score: " + flesch_score);
+  console.log("kinkaid grade level score: " + kinkaid_score);
 }
 
 function main(argc, argv) {
