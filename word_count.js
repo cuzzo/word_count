@@ -13,9 +13,16 @@ function sort_dictionary(dict) {
     return a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0;
   });
 
-  return tuples;
-}
+  var objs = [];
+  for (var index in tuples) {
+    var tuple = tuples[index];
+    var obj = {};
+    obj[tuple[0]] = tuple[1];
+    objs.push(obj);
+  }
 
+  return objs;
+}
 
 function blob_text(str) {
   var spaced_text = str.replace(/\s/g, " ");
@@ -44,7 +51,12 @@ function get_sentences(text_blob) {
   return text_blob.split(/\.[\s\"\']/g);
 }
 
+function replace_em_dashes(text_blob) {
+  return text_blob.replace("--", " ");
+}
+
 function get_words(text_blob) {
+  text_blob = replace_em_dashes(text_blob);
   raw_words = text_blob.split(" ");
   var words = [];
   raw_words.forEach(function(word) {
@@ -85,9 +97,9 @@ function get_dialogue(paragraphs) {
 }
 
 function clean_word(str) {
-  var cleaned_word = str.toLowerCase();
-  cleaned_word = cleaned_word.replace(/^[\s\"\.!;:\'\(\)]/, "");
-  return cleaned_word.replace(/[\s\"\.!;:\'\(\)]$/, "");
+  return str.toLowerCase()
+            .replace(/^[\s"'.,!;:()]/, "")
+            .replace(/[\s"'.,!;:()]$/, "");
 }
 
 function get_unique_words(words) {
@@ -190,7 +202,7 @@ function main(argc, argv) {
   var input_file = argv[2];
   var raw_input = fs.readFileSync(input_file, "utf8");
   var stats = analyze(raw_input);
-  console.log(stats);
+  console.log(JSON.stringify(stats, null, 4));
 }
 
 main(process.argv.length, process.argv);
