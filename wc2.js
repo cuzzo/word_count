@@ -626,15 +626,7 @@ function main(argc, argv) {
   var blob = new TextBlob(sanitized_text);
 
   var wd = blob.build_word_dict();
-  //console.log(wd.get_words());
-  console.log(blob.dialogue_bits);
+  console.log(wd.dicts);
 }
 
 main(process.argv.length, process.argv);
-
-//var tokenizer = new natural.TreebankWordTokenizer();
-//console.log(tokenizer.tokenize("I think she'd like to would've I'll."));
-
-//var stemmer = natural.LancasterStemmer;
-//var wordnet = new natural.WordNet();
-//var lexer = new pos.Lexer();
