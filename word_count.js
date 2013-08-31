@@ -76,12 +76,12 @@ var Blobber = function() {
   };
 
   this.sanitize = function(str) {
-    return str.replace(/’(d|ll|m|re|s|t|ve)/g, "'")
+    return str.replace(/’(d|ll|m|re|s|t|ve)/g, "'$1")
               .replace(/“/g, "\"")
               .replace(/”/g, "\"")
               //.replace(/‘/g, "\"") nested quotes not yet supported.
               //.replace(/’/g, "\"")
-              .replace(/—/g, " ")
+              .replace(/—/g, "--")
               .replace(/–/g, " ")
               .replace(/…/g, ".")
               .replace(/⁈/g, "?!")
@@ -306,17 +306,6 @@ function main(argc, argv) {
   var analyzer = new Analyzer();
   var stats = analyzer.analyze(raw_input);
   console.log(JSON.stringify(stats, null, 4));
-
-  /*var blobber = new Blobber();
-  var blob_parser = new BlobParser();
-  var trimmed_text = blobber.trim(raw_input);
-  var sanitized_text = blobber.sanitize(trimmed_text);
-  var text_blob = blobber.blob(sanitized_text);
-
-  var sentences = blob_parser.get_sentences(text_blob);
-  var tokens = blob_parser.tokenize(text_blob);
-
-  console.log(tokens);*/
 }
 
 main(process.argv.length, process.argv);
