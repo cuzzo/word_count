@@ -24,9 +24,35 @@ function sort_dictionary(dict) {
 }
 
 function clean_word(str) {
-  return str.toLowerCase()
-            .replace(/^[\s"'.,!;:()]/, "")
-            .replace(/[\s"'.,!;:()]$/, "");
+  var cleaned_word = str.toLowerCase()
+            .replace(/^\s+|\s+$/g, "")
+            .replace(/^["'.,!?;:()]*/, "")
+            .replace(/["'.,!?;:()]*$/, "");
+  if (!cleaned_word.match(/'/g)) {
+    return cleaned_word;
+  }
+
+  cleaned_word = cleaned_word.replace(/n't/g, " not")
+                     .replace(/'d/g, " 'd")
+                     .replace(/'ll/g, " will")
+                     .replace(/'m/g, " am")
+                     .replace(/'re/g, " are")
+                     .replace(/'ve/g, " have")
+                     .replace(/^let's/, "let us")
+                     .replace(/^so's/, "so as");
+
+  var is_regex = /^(he|she|it|how|that|there|what|when|where|who|why)'s/;
+  cleaned_word = cleaned_word.replace(is_regex, function(match) {
+    if (match.indexOf("'") === -1) {
+      return match;
+    }
+    else {
+      return match.split("'")[0] + " is";
+    }
+  })
+
+  cleaned_word = cleaned_word.replace(/'s/g, " 's");
+  return cleaned_word;
 }
 
 var Blobber = function() {
@@ -38,15 +64,28 @@ var Blobber = function() {
   function _remove_multiple_spaces(str) {
     return str.replace(/[ \t]{2,}/g, " ")
               .replace(/\n{2,}/g, "\n");
-  };
+  }
 
   function _replace_em_dashes(str) {
-    return str.replace("--", " ");
-  };
+    return str.replace(/--/g, " ");
+  }
 
   this.trim = function(str) {
     str = _remove_multiple_spaces(str);
     return str;
+  };
+
+  this.sanitize = function(str) {
+    return str.replace(/’(d|ll|m|re|s|t|ve)/g, "'")
+              .replace(/“/g, "\"")
+              .replace(/”/g, "\"")
+              //.replace(/‘/g, "\"") nested quotes not yet supported.
+              //.replace(/’/g, "\"")
+              .replace(/—/g, " ")
+              .replace(/–/g, " ")
+              .replace(/…/g, ".")
+              .replace(/⁈/g, "?!")
+              .replace(/⁉/g, "!?")
   };
 
   this.blob = function(str) {
@@ -72,17 +111,28 @@ var BlobParser = function() {
   };
 
   this.get_sentences = function(text_blob) {
-    return text_blob.split(/\.[\s"']/g);
+    var raw_sentences = text_blob.split(/\.[\s"']/g);
+    var sentences = [];
+    raw_sentences.forEach(function(sentence) {
+      if (!sentence.match(/[a-zA-Z0-9]/g)) {
+        return false;
+      }
+      sentences.push(sentence);
+    });
+    return sentences;
   }
 
-  this.get_words = function(text_blob) {
+  this.tokenize = function(text_blob) {
     raw_words = text_blob.split(" ");
     var words = [];
     raw_words.forEach(function(word) {
       if (!word.match(/[a-zA-Z0-9]/g)) {
         return false;
       }
-      words.push(word);
+      var cleaned_word = clean_word(word);
+      cleaned_word.split(" ").forEach(function(word) {
+        words.push(word);
+      });
       return true;
     });
     return words;
@@ -133,7 +183,6 @@ var Analyzer = function() {
   this.get_unique_words = function(words) {
     var dictionary = {};
     words.forEach(function(word) {
-      word = clean_word(word);
       if (dictionary[word] === undefined) {
         dictionary[word] = 1;
       }
@@ -147,7 +196,6 @@ var Analyzer = function() {
   this.get_character_count = function(words) {
     var character_count = 0;
     words.forEach(function(word) {
-      word = clean_word(word);
       character_count += word.length;
     });
     return character_count;
@@ -161,37 +209,55 @@ var Analyzer = function() {
     return (0.39 * asl) + (11.8 * asw) - 15.59;
   };
 
+  this.calculate_automated_readability_index = function(chars, words, sents) {
+    return 4.71 * (chars / words) + 0.5 * (words / sents) - 21.43;
+  };
+
+  this.calculate_coleman_liau_index = function(chars, words, sentences) {
+    var w100 = 100 / words;
+    return 0.0588 * (w100 * chars) - 0.296 * (w100 * sentences) - 15.8;
+  };
+
   this.analyze_text_blob = function(trimmed_text, items) {
     text_blob = this.blobber.blob(trimmed_text);
     var sentences = this.blob_parser.get_sentences(text_blob);
-    var words = this.blob_parser.get_words(text_blob);
-    var unique_words = this.get_unique_words(words);
-    var character_count = this.get_character_count(words);
+    var tokens = this.blob_parser.tokenize(text_blob);
+    var unique_words = this.get_unique_words(tokens);
+    var character_count = this.get_character_count(tokens);
 
     var unique_word_count = Object.keys(unique_words).length;
 
-    var average_sentence_length = words.length / sentences.length;
-    var average_syllables_per_word = character_count / words.length / SYL_LEN;
+    var average_sentence_length = tokens.length / sentences.length;
+    var average_syllables_per_word = character_count / tokens.length / SYL_LEN;
     var flesch_score = this.calculate_flesch_score(average_sentence_length,
                                               average_syllables_per_word);
     var kinkaid_score = this.calculate_kinkaid_grade_level(
                                               average_sentence_length,
                                               average_syllables_per_word);
+    var automated_readability_index =
+        this.calculate_automated_readability_index(character_count,
+                                                   tokens.length,
+                                                   sentences.length);
+    var coleman_liau_index = this.calculate_coleman_liau_index(character_count,
+                                                          tokens.length,
+                                                          sentences.length);
 
     var commas_per_sentence =
             this.blob_parser.get_comma_count(trimmed_text) / sentences.length;
 
 
     return {
-      "word_count": words.length,
+      "word_count": tokens.length,
       "unique_word_count": unique_word_count,
-      "average_item_length": words.length / items,
+      "average_item_length": tokens.length / items,
       "commas_per_sentence": commas_per_sentence,
       "average_sentence_length": average_sentence_length,
-      "unique_word_ratio": unique_word_count / words.length,
-      "average_word_length": character_count / words.length,
+      "unique_word_ratio": unique_word_count / tokens.length,
+      "average_word_length": character_count / tokens.length,
       "flesch_reading_score": flesch_score,
       "kinkaid_grade_score": kinkaid_score,
+      "automated_readability_index": automated_readability_index,
+      "coleman_liau_index": coleman_liau_index,
       "unique_words" : sort_dictionary(unique_words)
     }
   };
@@ -208,7 +274,6 @@ var Analyzer = function() {
   this.analyze_paragraphs = function(paragraphs) {
     var paragraphs_blob = this.blobber.blob(paragraphs.join(" "));
     var scene_count = this.paragraph_parser.get_scene_count(paragraphs);
-    var words = this.blob_parser.get_words(paragraphs_blob);
 
     var result = this.analyze_text_blob(paragraphs_blob, paragraphs.length);
     result["paragraph_count"] = paragraphs.length;
@@ -218,7 +283,8 @@ var Analyzer = function() {
   };
 
   this.analyze = function(raw_text) {
-    var text_blob = this.blobber.trim(raw_text);
+    var trimmed_text = this.blobber.trim(raw_text);
+    var text_blob = this.blobber.sanitize(trimmed_text);
     var paragraphs = this.blob_parser.get_paragraphs(text_blob);
     var paragraph_stats = this.analyze_paragraphs(paragraphs);
     var dialogue_stats = this.analyze_dialogue(paragraphs);
@@ -234,13 +300,23 @@ var Analyzer = function() {
   };
 };
 
-
 function main(argc, argv) {
   var input_file = argv[2];
   var raw_input = fs.readFileSync(input_file, "utf8");
   var analyzer = new Analyzer();
   var stats = analyzer.analyze(raw_input);
   console.log(JSON.stringify(stats, null, 4));
+
+  /*var blobber = new Blobber();
+  var blob_parser = new BlobParser();
+  var trimmed_text = blobber.trim(raw_input);
+  var sanitized_text = blobber.sanitize(trimmed_text);
+  var text_blob = blobber.blob(sanitized_text);
+
+  var sentences = blob_parser.get_sentences(text_blob);
+  var tokens = blob_parser.tokenize(text_blob);
+
+  console.log(tokens);*/
 }
 
 main(process.argv.length, process.argv);
