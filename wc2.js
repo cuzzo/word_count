@@ -1,7 +1,6 @@
 #! /usr/bin/env node
 
-var SYL_LEN = 3; // Constant for average syllable length
-var SNTZD_PRD = "_))-((_";
+var SNTZD_PRD = "_}}#{{_";
 var _ = require("underscore");
 var natural = require("natural");
 var pos = require("pos");
@@ -21,17 +20,23 @@ var Tokenizer = function() {
     var text = text.replace(/\bt'?is\b/ig, "it is")
                    .replace(/\bt'?was\b/ig, "it was")
                    .replace(/\bain'?t\b/ig, "are not")
+                   .replace(/\b'?bout\b/ig, "about")
                    .replace(/\bcannot\b/ig, "can not")
                    .replace(/\bc'?mon\b/ig, "come on")
+                   .replace(/\bdunno\b/ig, "do not know")
                    .replace(/\bgimme\b/ig, "give me")
                    .replace(/\bgonna\b/ig, "going to")
                    .replace(/\bgotta\b/ig, "have to")
                    .replace(/\blemme\b/ig, "let me")
                    .replace(/\bmor'n\b/ig, "more than")
+                   .replace(/\bmusta'?\b/ig, "must have")
                    .replace(/\bwanna\b/ig, "want to")
                    .replace(/\bwhat?'?cha\b/ig, "what do you")
                    .replace(/\byes'm\b/ig, "yes ma'am")
                    .replace(/\bi'm\b/ig, "I am")
+                   .replace(/\bi'?mm?a/ig, "I am going to")
+                   .replace(/\b'cause\b/ig, "because")
+                   .replace(/\b'?em\b/ig, "them")
                    .replace(/\bso's\b/ig, "so as")
                    .replace(/\blet's\b/ig, "let us")
                    .replace(/\bwon't\b/ig, "will not");
@@ -43,10 +48,13 @@ var Tokenizer = function() {
                .replace(/'ll/g, " will")
                .replace(/'re/g, " are");
 
-
     // Is contractions.
     var is_regex = /\b(he|she|it|how|that|there|what|when|where|who|why)'s\b/ig;
     text = text.replace(is_regex, "$1 is");
+
+    // Split possesion
+    text = text.replace(/(.)'s\b/ig, "$1 's")
+               .replace(/\b([^\s]+s)\b'/ig, "$1 's");
 
     // Most punctuation.
     text = text.replace(/([^\w\.\'\-\/\+\<\>,&])/g, " $1 ");
@@ -172,7 +180,7 @@ var Sanitizer = function() {
     var end_string = str.substring(pos);
     var word = this.get_next_word(end_string);
     end_string = end_string.substring(word.length);
-    word = word.replace(".", "");
+    word = word.replace(/\./g, "");
     if (!end_string) {
       return start_string + word + SNTZD_PRD;
     }
@@ -244,7 +252,7 @@ var Sanitizer = function() {
     while ((match = regexp.exec(str)) !== null) {
       var time = match[0];
       var start = str.substring(0, match["index"]);
-      var end = str.substring(match["index"] + time.length);
+      var end = str.substring(regexp.lastIndex);
       str = start + time.replace(":", "-") + end;
     }
     return str;
@@ -258,11 +266,11 @@ var Sanitizer = function() {
       line = this.replace_en_dashes(line);
       line = this.remove_duplicate_punctuation(line);
       line = this.switch_exclamitory_question_punctuation_order(line);
-      //line = this.switch_quote_punctuation_order(line);
+      line = this.switch_quote_punctuation_order(line);
       line = this.replace_abbreviations(line);
-      return line.replace(SNTZD_PRD, ".");
-    }, this);
-    return lines.join("\n");
+      return line.replace(new RegExp(SNTZD_PRD, "ig"), ".");
+   }, this);
+   return lines.join("\n");
   };
 }
 
@@ -276,7 +284,8 @@ var TextBlob = function(text) {
   var tagger = new Tagger();
 
   this.add_scene = function(paragraph) {
-    if (paragraph.length <= 0) {
+    if (paragraph.length <= 0 ||
+        paragraph[0].length <= 0) {
       return false;
     }
     this.scenes.push(paragraph);
@@ -317,14 +326,14 @@ var TextBlob = function(text) {
         current_p = [];
       }
       var sentences = [];
+      var start = 0;
       var regexp = /(?:[.!?]+)/g;
       while ((match = regexp.exec(paragraph)) !== null) {
         var term = match[0];
-        var sentence = paragraph.substring(0, match["index"]);
+        var sentence = paragraph.substring(start, regexp.lastIndex);
         var tokens = tokenizer.tokenize(sentence);
-        tokens.push(term);
         sentences.push(tokens);
-        paragraph = paragraph.substring(match["index"] + term.length);
+        start = regexp.lastIndex;
       }
       current_p.push(sentences);
     }, this);
@@ -402,7 +411,7 @@ var TextBlob = function(text) {
 };
 
 var WordDict = function() {
-  var punc_regex = /^[.!?,;:"]+$/;
+  var punc_regex = /^[.!?,;:()"_-]+$/;
 
   this.dicts = {};
 
@@ -414,6 +423,11 @@ var WordDict = function() {
   };
 
   this.add_word = function(word, pos) {
+    word = word.replace(/[.!?,;:()"_-]+$/, "");
+    if (word === "") {
+      return;
+    }
+
     // SPECIAL CASE FOR -LY ADVERBS.
     if (pos === "RB") {
       if (word.indexOf("ly", word.length - 2) !== -1) {
@@ -453,11 +467,11 @@ var WordDict = function() {
   this.get_words = function() {
     var words = {};
     _.each(this.dicts, function(dict) {
-      _.each(dict, function(count, word) {
+      _.each(_.keys(dict), function(word) {
         if (!this.is_word(word)) {
           return;
         }
-        words[word] = count;
+        words[word] = dict[word];
       }, this);
     }, this);
     return words;
@@ -629,4 +643,15 @@ function main(argc, argv) {
   console.log(wd.dicts);
 }
 
-main(process.argv.length, process.argv);
+if (require.main === module) {
+  main(process.argv.length, process.argv);
+}
+
+module.exports = {
+  Tagger: Tagger,
+  Tokenizer: Tokenizer,
+  Sanitizer: Sanitizer,
+  TextBlob: TextBlob,
+  Grouper: Grouper,
+  WordDict: WordDict
+};
