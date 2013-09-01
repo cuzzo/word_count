@@ -335,6 +335,10 @@ var TextBlob = function(text) {
         sentences.push(tokens);
         start = regexp.lastIndex;
       }
+      if (start < paragraph.length) {
+        var tokens = tokenizer.tokenize(paragraph.substring(start));
+        sentences.push(tokens);
+      }
       current_p.push(sentences);
     }, this);
     this.add_scene(current_p);
