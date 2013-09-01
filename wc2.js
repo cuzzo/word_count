@@ -44,7 +44,7 @@ var Tokenizer = function() {
     // Standard easily replacable contractions
     text = text.replace(/(.)'ve\b/ig, "$1 have") // have first; can commpound
                .replace(/(.)n't\b/ig, "$1 not") // not second; can compound
-               .replace(/(.)'d\b/g, " 'd")
+               .replace(/(.)'d\b/g, "$1 'd")
                .replace(/'ll/g, " will")
                .replace(/'re/g, " are");
 
