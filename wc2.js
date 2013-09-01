@@ -39,7 +39,9 @@ var Tokenizer = function() {
                    .replace(/\b'?em\b/ig, "them")
                    .replace(/\bso's\b/ig, "so as")
                    .replace(/\blet's\b/ig, "let us")
-                   .replace(/\bwon't\b/ig, "will not");
+                   .replace(/\bwon't\b/ig, "will not")
+                   .replace(/\bcan't\b/ig, "can not")
+                   .replace(/\bshan't\b/ig, "shall not");
 
     // Standard easily replacable contractions
     text = text.replace(/(.)'ve\b/ig, "$1 have") // have first; can commpound
@@ -198,8 +200,8 @@ var Sanitizer = function() {
     return str.replace(/’(d|ll|m|re|s|t|ve)/g, "'$1")
               .replace(/“/g, "\"")
               .replace(/”/g, "\"")
-              //.replace(/‘/g, "\"") nested quotes not yet supported.
-              //.replace(/’/g, "\"")
+              .replace(/‘/g, "") // nested quotes not yet supported.
+              .replace(/’/g, "")
               .replace(/⁈/g, "?!")
               .replace(/⁉/g, "!?")
               .replace(/…/g, ".");
