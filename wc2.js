@@ -41,7 +41,8 @@ var Tokenizer = function() {
                    .replace(/\blet's\b/ig, "let us")
                    .replace(/\bwon't\b/ig, "will not")
                    .replace(/\bcan't\b/ig, "can not")
-                   .replace(/\bshan't\b/ig, "shall not");
+                   .replace(/\bshan't\b/ig, "shall not")
+                   .replace(/\by'all\b/ig, "you all");
 
     // Standard easily replacable contractions
     text = text.replace(/(.)'ve\b/ig, "$1 have") // have first; can commpound
